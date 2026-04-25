@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProject } from "@/lib/projects";
-import { ArrowLeft, ExternalLink, Calendar, CheckCircle } from "lucide-react";
+import { projects } from "@/config/projects";
+import { ArrowLeft, ExternalLink, Calendar, CheckCircle, Star, Code } from "lucide-react";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -10,11 +10,9 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const project = await getProject(slug);
+  const project = projects.find(p => p.slug === slug);
   
-  if (!project) {
-    return { title: "Proyecto no encontrado" };
-  }
+  if (!project) return { title: "Proyecto no encontrado" };
   
   return {
     title: `${project.title} | Lisandro Dev`,
@@ -24,73 +22,57 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProjectDetailPage({ params }: Props) {
   const { slug } = await params;
-  const project = await getProject(slug);
+  const project = projects.find(p => p.slug === slug);
 
-  if (!project) {
-    notFound();
-  }
+  if (!project) notFound();
 
-  const sections = project.content.split("\n## ").slice(1);
-  const problem = sections.find((s) => s.startsWith("Problema"))?.replace("Problema\n", "") || "";
-  const solucion = sections.find((s) => s.startsWith("Solución"))?.replace("Solución\n", "") || "";
-  const stack = sections.find((s) => s.startsWith("Stack"))?.replace("Stack\n", "") || "";
-  const decisiones = sections.find((s) => s.startsWith("Decisiones"))?.replace("Decisiones\n", "") || "";
-  const resultados = sections.find((s) => s.startsWith("Resultados"))?.replace("Resultados\n", "") || "";
+  const statusLabels: Record<string, string> = {
+    completado: "Completado",
+    "en-progreso": "En Progreso",
+    planificado: "Planificado",
+  };
 
   return (
     <div className="section">
-      <Link 
-        href="/projects" 
-        className="inline-flex items-center gap-2 text-[var(--muted)] hover:text-[var(--foreground)] mb-6"
-      >
+      <Link href="/projects" className="inline-flex items-center gap-2 text-[var(--muted)] hover:text-[var(--foreground)] mb-6">
         <ArrowLeft size={18} /> Volver a proyectos
       </Link>
 
       <article className="max-w-4xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold mb-4">{project.title}</h1>
+          <div className="flex items-center gap-3 mb-4">
+            <h1 className="text-3xl font-bold">{project.title}</h1>
+            {project.featured && <Star className="w-5 h-5 text-yellow-500" fill="currentColor" />}
+          </div>
           <p className="text-lg text-[var(--muted)] mb-6">{project.description}</p>
           
           <div className="flex flex-wrap gap-4 mb-6">
             {project.demoUrl && (
-              <a 
-                href={project.demoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-primary flex items-center gap-2"
-              >
+              <a href={project.demoUrl} target="_blank" rel="noopener noreferrer" className="btn-primary flex items-center gap-2">
                 <ExternalLink size={18} /> Ver Demo
               </a>
             )}
             {project.githubUrl && (
-              <a 
-                href={project.githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary flex items-center gap-2"
-              >
-                Ver Código
+              <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary flex items-center gap-2">
+                <Code size={18} /> Ver Código
               </a>
             )}
           </div>
 
-          <div className="flex gap-4 text-sm text-[var(--muted)]">
+          <div className="flex gap-6 text-sm text-[var(--muted)]">
             <span className="flex items-center gap-2">
               <Calendar size={16} /> {project.year}
             </span>
             <span className="flex items-center gap-2">
-              <CheckCircle size={16} /> {project.status}
+              <CheckCircle size={16} /> {statusLabels[project.status]}
             </span>
+            <span className="text-[var(--primary)] font-medium">{project.percentage}% completo</span>
           </div>
         </header>
 
         <div className="aspect-video bg-[var(--secondary)] rounded-xl mb-8 flex items-center justify-center overflow-hidden">
           {project.image ? (
-            <img 
-              src={project.image} 
-              alt={project.title}
-              className="w-full h-full object-cover"
-            />
+            <img src={project.image} alt={project.title} className="w-full h-full object-cover" />
           ) : (
             <span className="text-6xl">🖥️</span>
           )}
@@ -104,50 +86,14 @@ export default async function ProjectDetailPage({ params }: Props) {
           ))}
         </div>
 
-        {problem && (
-          <section className="card mb-6">
-            <h2 className="text-xl font-semibold mb-4">El Problema</h2>
-            <div className="prose prose-sm max-w-none text-[var(--muted)]">
-              {problem}
-            </div>
-          </section>
-        )}
-
-        {solucion && (
-          <section className="card mb-6">
-            <h2 className="text-xl font-semibold mb-4">La Solución</h2>
-            <div className="prose prose-sm max-w-none text-[var(--muted)]">
-              {solucion}
-            </div>
-          </section>
-        )}
-
-        {stack && (
-          <section className="card mb-6">
-            <h2 className="text-xl font-semibold mb-4">Stack Utilizado</h2>
-            <div className="prose prose-sm max-w-none text-[var(--muted)]">
-              {stack}
-            </div>
-          </section>
-        )}
-
-        {decisiones && (
-          <section className="card mb-6">
-            <h2 className="text-xl font-semibold mb-4">Decisiones Técnicas</h2>
-            <div className="prose prose-sm max-w-none text-[var(--muted)]">
-              {decisiones}
-            </div>
-          </section>
-        )}
-
-        {resultados && (
-          <section className="card">
-            <h2 className="text-xl font-semibold mb-4">Resultados</h2>
-            <div className="prose prose-sm max-w-none text-[var(--muted)]">
-              {resultados}
-            </div>
-          </section>
-        )}
+        <section className="card">
+          <h2 className="text-xl font-semibold mb-4">Acerca de este proyecto</h2>
+          <p className="text-[var(--muted)]">
+            Este proyecto fue desarrollado utilizando las tecnologías mencionadas arriba. 
+            {project.demoUrl && " Puedes ver el demo en vivo."}
+            {project.githubUrl && " El código fuente está disponible en GitHub."}
+          </p>
+        </section>
       </article>
     </div>
   );
