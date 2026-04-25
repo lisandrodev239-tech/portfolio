@@ -50,7 +50,7 @@ export const projects: Project[] = [
     percentage: 100,
     technologies: ["React", "Node.js", "MySQL"],
     year: 2024,
-    featured: true,
+    featured: false,
   },
   {
     title: "Sistema de Inventario PyME",
