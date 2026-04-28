@@ -1,32 +1,38 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { supabase } from "@/lib/supabase";
-import { Upload, X, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, X, Loader2, AlertCircle, CheckCircle, Image as ImageIcon } from "lucide-react";
 
 interface ImageUploaderProps {
   value: string;
   onChange: (url: string) => void;
-  bucket?: string;
 }
 
-export default function ImageUploader({ value, onChange, bucket = "portfolio-images" }: ImageUploaderProps) {
+export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [mode, setMode] = useState<"url" | "upload">("url");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUrlSubmit = () => {
+    if (value && (value.startsWith("http://") || value.startsWith("https://"))) {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } else {
+      setError("Ingresa una URL válida");
+    }
+  };
 
   const handleUpload = async (file: File) => {
     if (!file) return;
     
-    // Validar tipo de archivo
     if (!file.type.startsWith("image/")) {
-      setError("Por favor seleccioná una imagen (JPG, PNG, etc.)");
+      setError("Por favor seleccioná una imagen");
       return;
     }
 
-    // Validar tamaño (máx 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError("La imagen no puede superar 5MB");
       return;
@@ -34,42 +40,26 @@ export default function ImageUploader({ value, onChange, bucket = "portfolio-ima
     
     setUploading(true);
     setError(null);
-    setSuccess(false);
     
     try {
-      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-      
-      const { data, error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        // Error específico de Supabase
-        if (uploadError.message.includes("row-level security")) {
-          throw new Error("Error de permisos. Verificá las políticas del bucket en Supabase.");
-        }
-        if (uploadError.message.includes("bucket")) {
-          throw new Error("Bucket no encontrado. Creá el bucket 'portfolio-images' en Supabase.");
-        }
-        throw new Error(uploadError.message);
-      }
-
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(fileName);
-
-      onChange(urlData.publicUrl);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      // Convertir a base64 y usar como data URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        onChange(reader.result as string);
+        setSuccess(true);
+        setUploading(false);
+        setTimeout(() => setSuccess(false), 3000);
+      };
+      reader.onerror = () => {
+        setError("Error al leer archivo");
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Error al subir imagen";
-      setError(errorMessage);
+      setError("Error al procesar imagen");
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -78,8 +68,6 @@ export default function ImageUploader({ value, onChange, bucket = "portfolio-ima
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith("image/")) {
       handleUpload(file);
-    } else {
-      setError("Arrastrá solo imágenes");
     }
   };
 
@@ -90,19 +78,8 @@ export default function ImageUploader({ value, onChange, bucket = "portfolio-ima
     }
   };
 
-  const deleteImage = async () => {
-    if (!value) return;
-    
-    try {
-      const urlParts = value.split(`/storage/v1/object/public/${bucket}/`);
-      const fileName = urlParts[1];
-      if (fileName) {
-        await supabase.storage.from(bucket).remove([fileName]);
-      }
-      onChange("");
-    } catch (err) {
-      console.error("Error deleting:", err);
-    }
+  const deleteImage = () => {
+    onChange("");
   };
 
   return (
@@ -120,10 +97,28 @@ export default function ImageUploader({ value, onChange, bucket = "portfolio-ima
       {success && (
         <div className="flex items-center gap-2 p-3 mb-3 text-sm text-green-600 bg-green-50 rounded-lg">
           <CheckCircle size={16} />
-          <span>¡Imagen subida exitosamente!</span>
+          <span>¡Imagen guardada!</span>
         </div>
       )}
-      
+
+      {/* Toggle entre URL y Upload */}
+      <div className="flex gap-2 mb-3">
+        <button
+          type="button"
+          onClick={() => setMode("url")}
+          className={`px-3 py-1 text-sm rounded ${mode === "url" ? "bg-[var(--primary)] text-white" : "bg-[var(--secondary)]"}`}
+        >
+          URL
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("upload")}
+          className={`px-3 py-1 text-sm rounded ${mode === "upload" ? "bg-[var(--primary)] text-white" : "bg-[var(--secondary)]"}`}
+        >
+          Subir archivo
+        </button>
+      </div>
+
       {value ? (
         <div className="relative group">
           <img src={value} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
@@ -137,6 +132,28 @@ export default function ImageUploader({ value, onChange, bucket = "portfolio-ima
             </button>
           </div>
         </div>
+      ) : mode === "url" ? (
+        <div className="space-y-2">
+          <input
+            type="url"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="https://ejemplo.com/imagen.jpg"
+            className="w-full px-4 py-2 rounded-lg border border-[var(--border)]"
+          />
+          {value && (
+            <button
+              type="button"
+              onClick={handleUrlSubmit}
+              className="btn-primary w-full"
+            >
+              Guardar URL
+            </button>
+          )}
+          <p className="text-xs text-[var(--muted)]">
+            Podés usar URLs de cualquier hosting: Imgur, Cloudinary, GitHub, etc.
+          </p>
+        </div>
       ) : (
         <div
           onDrop={handleDrop}
@@ -145,20 +162,20 @@ export default function ImageUploader({ value, onChange, bucket = "portfolio-ima
           onClick={() => fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-lg h-40 flex flex-col items-center justify-center cursor-pointer transition-all ${
             dragOver 
-              ? "border-[var(--primary)] bg-[var(--primary)]/10 scale-[1.02]" 
-              : "border-[var(--border)] hover:border-[var(--primary)]/50"
+              ? "border-[var(--primary)] bg-[var(--primary)]/10" 
+              : "border-[var(--border)]"
           }`}
         >
           {uploading ? (
             <>
               <Loader2 className="w-10 h-10 animate-spin text-[var(--primary)] mb-2" />
-              <span className="text-sm text-[var(--muted)]">Subiendo imagen...</span>
+              <span className="text-sm text-[var(--muted)]">Procesando...</span>
             </>
           ) : (
             <>
-              <Upload className="w-10 h-10 text-[var(--muted)] mb-2" />
+              <ImageIcon className="w-10 h-10 text-[var(--muted)] mb-2" />
               <span className="text-sm text-[var(--muted)]">Click o arrastrá una imagen</span>
-              <span className="text-xs text-[var(--muted)] mt-1">Máx 5MB (JPG, PNG, WEBP)</span>
+              <span className="text-xs text-[var(--muted)] mt-1">Se guarda como base64</span>
             </>
           )}
         </div>
@@ -166,7 +183,7 @@ export default function ImageUploader({ value, onChange, bucket = "portfolio-ima
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept="image/*"
         onChange={handleFileChange}
         className="hidden"
       />
