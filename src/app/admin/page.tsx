@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { supabase, ContactMessage, Project } from "@/lib/supabase";
-import { MessageSquare, Folder, CheckCircle, Trash2, Eye, EyeOff, Lock, Plus, X } from "lucide-react";
+import { MessageSquare, Folder, CheckCircle, Trash2, Eye, EyeOff, Lock, Plus, Image } from "lucide-react";
+import ImageUploader from "@/components/image-uploader";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -246,27 +247,23 @@ export default function AdminPage() {
               />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">URL Imagen</label>
-                <input
-                  type="url"
-                  value={newProject.image_url}
-                  onChange={(e) => setNewProject({...newProject, image_url: e.target.value})}
-                  className="w-full px-4 py-2 rounded-lg border border-[var(--border)]"
-                  placeholder="https://..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Demo URL</label>
-                <input
-                  type="url"
-                  value={newProject.demo_url}
-                  onChange={(e) => setNewProject({...newProject, demo_url: e.target.value})}
-                  className="w-full px-4 py-2 rounded-lg border border-[var(--border)]"
-                  placeholder="https://..."
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Imagen del proyecto</label>
+              <ImageUploader
+                value={newProject.image_url}
+                onChange={(url) => setNewProject({...newProject, image_url: url})}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Demo URL</label>
+              <input
+                type="url"
+                value={newProject.demo_url}
+                onChange={(e) => setNewProject({...newProject, demo_url: e.target.value})}
+                className="w-full px-4 py-2 rounded-lg border border-[var(--border)]"
+                placeholder="https://..."
+              />
             </div>
 
             <div>
