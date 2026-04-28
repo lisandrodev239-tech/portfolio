@@ -33,6 +33,9 @@ export default function RootLayout({
               <Link href="/contact" className="hover:text-[var(--primary)] transition-colors">
                 Contacto
               </Link>
+              <Link href="/admin" className="hover:text-[var(--primary)] transition-colors text-[var(--muted)]">
+                Admin
+              </Link>
             </div>
           </nav>
         </header>
